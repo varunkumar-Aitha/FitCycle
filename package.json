@@ -1,0 +1,13 @@
+{
+  "name": "gym-tracker",
+  "version": "1.0.0",
+  "description": "3-Month Gym & Nutrition Tracker",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "seed": "npm run seed --prefix server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

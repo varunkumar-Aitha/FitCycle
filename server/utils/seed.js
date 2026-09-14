@@ -1,0 +1,173 @@
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+const mongoose = require('mongoose');
+const Exercise = require('../models/Exercise');
+const connectDB = require('../config/db');
+
+const exercises = [
+  // ===== CHEST — 15 exercises =====
+  { name: 'Barbell Bench Press', muscleGroup: 'Chest', targetArea: 'Mid Chest', equipment: 'Barbell', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '8-10', instructions: 'Lie flat on bench, grip bar slightly wider than shoulder width. Lower bar to mid-chest and press up explosively. Keep shoulder blades retracted.', videoUrl: '/videos/Barbell Bench Press.webm' },
+  { name: 'Incline Barbell Bench Press', muscleGroup: 'Chest', targetArea: 'Upper Chest', equipment: 'Barbell', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '8-10', instructions: 'Set bench to 30-45 degrees. Grip bar slightly wider than shoulder width. Lower to upper chest and press up.', videoUrl: '/videos/Incline Barbell Bench Press.mp4' },
+  { name: 'Decline Barbell Bench Press', muscleGroup: 'Chest', targetArea: 'Lower Chest', equipment: 'Barbell', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '8-12', instructions: 'Set bench to -15 to -30 degrees. Grip bar at shoulder width. Lower bar to lower chest and press up powerfully.', videoUrl: '/videos/Decline Barbell Bench Press.mp4' },
+  { name: 'Flat Dumbbell Press', muscleGroup: 'Chest', targetArea: 'Mid Chest', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Lie flat on bench. Hold dumbbells at chest level with palms facing forward. Press upward and slightly inward until arms are extended.', videoUrl: '/videos/Flat Dumbbell Press.webm' },
+  { name: 'Incline Dumbbell Press', muscleGroup: 'Chest', targetArea: 'Upper Chest', equipment: 'Dumbbell', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '8-12', instructions: 'Lie on inclined bench at 30-45 degrees. Press dumbbells upward and together above upper chest.' },
+  { name: 'Decline Dumbbell Press', muscleGroup: 'Chest', targetArea: 'Lower Chest', equipment: 'Dumbbell', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '8-12', instructions: 'Lie on declined bench. Press dumbbells upward targeting lower chest area.' },
+  { name: 'Cable Fly – High to Low', muscleGroup: 'Chest', targetArea: 'Lower Chest', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Set cables above shoulder height. Bring hands down and together in front of lower chest in arc motion.' },
+  { name: 'Cable Fly – Mid Level', muscleGroup: 'Chest', targetArea: 'Mid Chest', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Stand between cables set at shoulder height. Bring hands together in front of chest in arc motion.', videoUrl: '/videos/cable_fly_mid_chest.mp4' },
+  { name: 'Cable Fly – Low to High', muscleGroup: 'Chest', targetArea: 'Upper Chest', equipment: 'Cable', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '12-15', instructions: 'Set cables at low pulley. Bring hands upward and together in front of upper chest.' },
+  { name: 'Pec Deck / Butterfly', muscleGroup: 'Chest', targetArea: 'Mid Chest', equipment: 'Machine', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Sit at pec deck machine. Place arms on pads and bring them together in front of chest.' },
+  { name: 'Chest Press Machine', muscleGroup: 'Chest', targetArea: 'Mid Chest', equipment: 'Machine', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Sit at chest press machine. Grip handles and press forward until arms are extended.' },
+  { name: 'Incline Chest Press Machine', muscleGroup: 'Chest', targetArea: 'Upper Chest', equipment: 'Machine', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Sit at incline chest press machine. Press handles forward targeting upper chest.' },
+  { name: 'Dumbbell Pullover', muscleGroup: 'Chest', targetArea: 'Upper Chest', equipment: 'Dumbbell', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '10-12', instructions: 'Lie across bench. Hold dumbbell overhead with both hands. Lower behind head, then pull over to chest.' },
+  { name: 'Weighted Dips', muscleGroup: 'Chest', targetArea: 'Lower Chest', equipment: 'Bodyweight', difficulty: 'Advanced', defaultSets: 3, defaultReps: '8-12', instructions: 'Use parallel bars leaning slightly forward. Lower body by bending elbows past 90 degrees then push back up.' },
+  { name: 'Push-Ups', muscleGroup: 'Chest', targetArea: 'Mid Chest', equipment: 'Bodyweight', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-20', instructions: 'Start in plank position. Lower chest to floor and push back up with full elbow extension.' },
+
+  // ===== TRICEPS — 15 exercises =====
+  { name: 'Cable Triceps Pushdown – Straight Bar', muscleGroup: 'Triceps', targetArea: 'Overall Triceps', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-15', instructions: 'Attach straight bar to high cable pulley. Stand upright, keep elbows pinned to sides. Push bar down until arms fully extended.', videoUrl: '/videos/Cable Triceps Pushdown – Straight Bar.mp4' },
+  { name: 'Cable Triceps Pushdown – Rope', muscleGroup: 'Triceps', targetArea: 'Overall Triceps', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-15', instructions: 'Attach rope to high cable pulley. Push down and splay rope ends outward at the bottom for full triceps contraction.' },
+  { name: 'Single Arm Cable Pushdown', muscleGroup: 'Triceps', targetArea: 'Overall Triceps', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Attach single handle to high cable. One arm at a time — keep elbow fixed to side. Push handle down to full extension.' },
+  { name: 'Overhead Cable Triceps Extension', muscleGroup: 'Triceps', targetArea: 'Long Head', equipment: 'Cable', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '10-15', instructions: 'Set cable to low pulley with rope. Face away from machine, extend rope overhead. Keep elbows pointed upward and close to ears.', videoUrl: '/videos/Overhead Cable Triceps Extension.webm' },
+  { name: 'Single Arm Overhead Cable Extension', muscleGroup: 'Triceps', targetArea: 'Long Head', equipment: 'Cable', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '10-15', instructions: 'Face away from cable. With one arm extend handle overhead. Keep elbow close to head throughout movement.' },
+  { name: 'Dumbbell Overhead Triceps Extension', muscleGroup: 'Triceps', targetArea: 'Long Head', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-15', instructions: 'Hold one dumbbell overhead with both hands. Lower behind head by bending elbows, then extend back up.' },
+  { name: 'EZ-Bar Skull Crushers', muscleGroup: 'Triceps', targetArea: 'Long Head', equipment: 'EZ Bar', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '10-12', instructions: 'Lie on bench. Lower EZ-bar toward forehead by bending elbows, then extend back up explosively.' },
+  { name: 'Dumbbell Skull Crushers', muscleGroup: 'Triceps', targetArea: 'Overall Triceps', equipment: 'Dumbbell', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '10-12', instructions: 'Lie on bench. Lower dumbbells toward temples by bending elbows, keeping upper arms stationary.' },
+  { name: 'Close-Grip Bench Press', muscleGroup: 'Triceps', targetArea: 'Overall Triceps', equipment: 'Barbell', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '8-12', instructions: 'Grip bar narrower than shoulder width. Lower to chest keeping elbows tight. Press up through the triceps.' },
+  { name: 'Tricep Dips (Weighted)', muscleGroup: 'Triceps', targetArea: 'Overall Triceps', equipment: 'Bodyweight', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '8-15', instructions: 'Use parallel bars. Lower body by bending elbows past 90 degrees then push back up. Keep torso upright.' },
+  { name: 'Bench Dips', muscleGroup: 'Triceps', targetArea: 'Overall Triceps', equipment: 'Bodyweight', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-20', instructions: 'Place hands on bench behind you, feet extended. Lower hips toward floor by bending elbows.' },
+  { name: 'Dumbbell Kickbacks', muscleGroup: 'Triceps', targetArea: 'Lateral Head', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Hinge forward, upper arm parallel to floor. Extend forearm back and up squeezing triceps.', videoUrl: '/videos/Dumbbell Kickbacks.webm' },
+  { name: 'Cable Kickbacks', muscleGroup: 'Triceps', targetArea: 'Lateral Head', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Attach handle to low cable. Hinge forward and extend arm backward squeezing lateral head.' },
+  { name: 'Reverse-Grip Cable Pushdown', muscleGroup: 'Triceps', targetArea: 'Medial Head', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Use underhand grip on straight bar. Push down targeting medial and lateral head.', videoUrl: '/videos/Reverse-Grip Cable Pushdown.webm' },
+  { name: 'JM Press', muscleGroup: 'Triceps', targetArea: 'Overall Triceps', equipment: 'Barbell', difficulty: 'Advanced', defaultSets: 3, defaultReps: '8-10', instructions: 'Hybrid between close-grip bench and skull crusher. Lower bar toward chin while elbows flare slightly.' },
+
+  // ===== BACK — 15 exercises =====
+  { name: 'Pull-Ups', muscleGroup: 'Back', targetArea: 'Lats', equipment: 'Bodyweight', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '6-10', instructions: 'Grip pull-up bar overhand wider than shoulders. Pull body up until chin over bar. Lower slowly.' },
+  { name: 'Wide-Grip Lat Pulldown', muscleGroup: 'Back', targetArea: 'Lats', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 4, defaultReps: '10-12', instructions: 'Grip bar wider than shoulder width. Pull bar down to upper chest while leaning slightly back.' },
+  { name: 'Close-Grip Lat Pulldown', muscleGroup: 'Back', targetArea: 'Lats', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Use close/neutral grip handle. Pull to upper chest emphasizing lower lat.' },
+  { name: 'Barbell Bent-Over Row', muscleGroup: 'Back', targetArea: 'Mid Back', equipment: 'Barbell', difficulty: 'Intermediate', defaultSets: 4, defaultReps: '8-10', instructions: 'Hinge forward 45 degrees. Row bar to lower chest/upper abdomen, leading with elbows.' },
+  { name: 'T-Bar Row', muscleGroup: 'Back', targetArea: 'Mid Back', equipment: 'Barbell', difficulty: 'Intermediate', defaultSets: 4, defaultReps: '8-10', instructions: 'Straddle T-bar, hinge forward and row bar to chest squeezing mid back.' },
+  { name: 'Seated Cable Row', muscleGroup: 'Back', targetArea: 'Mid Back', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Sit at cable row machine. Pull handle to abdomen, squeeze shoulder blades together.' },
+  { name: 'One-Arm Dumbbell Row', muscleGroup: 'Back', targetArea: 'Lats', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Support on bench with one arm. Row dumbbell up to hip level, elbow close to body.' },
+  { name: 'Chest-Supported Dumbbell Row', muscleGroup: 'Back', targetArea: 'Upper Back', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Lie face down on inclined bench. Row dumbbells upward, squeezing upper back and rear delts.' },
+  { name: 'Chest-Supported Machine Row', muscleGroup: 'Back', targetArea: 'Mid Back', equipment: 'Machine', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Sit at chest-supported machine row. Pull handles toward torso squeezing mid back.' },
+  { name: 'Single-Arm Cable Row', muscleGroup: 'Back', targetArea: 'Lats', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Stand at cable station. Pull single handle toward hip focusing on lat engagement.' },
+  { name: 'Straight-Arm Pulldown', muscleGroup: 'Back', targetArea: 'Lats', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Stand at high cable. Keep arms straight, pull bar down from overhead to thighs. Great lat isolation.' },
+  { name: 'Machine Lat Pulldown', muscleGroup: 'Back', targetArea: 'Lats', equipment: 'Machine', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Sit at lat pulldown machine. Pull handles down to shoulder height squeezing lats.' },
+  { name: 'Reverse-Grip Barbell Row', muscleGroup: 'Back', targetArea: 'Lats', equipment: 'Barbell', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '8-10', instructions: 'Underhand grip on barbell. Row to lower abs engaging lower lats.' },
+  { name: 'Dumbbell Pullover', muscleGroup: 'Back', targetArea: 'Lats', equipment: 'Dumbbell', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '10-12', instructions: 'Lie across bench. Hold dumbbell overhead. Lower behind head then pull over targeting lats.' },
+  { name: 'Rack Pull', muscleGroup: 'Back', targetArea: 'Upper Back', equipment: 'Barbell', difficulty: 'Advanced', defaultSets: 3, defaultReps: '5-8', instructions: 'Partial deadlift from knee height. Drive hips forward squeezing upper back and traps.' },
+
+  // ===== BICEPS — 15 exercises =====
+  { name: 'Barbell Curl', muscleGroup: 'Biceps', targetArea: 'Overall Biceps', equipment: 'Barbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '8-12', instructions: 'Stand with barbell, palms up. Curl bar upward keeping upper arms stationary.' },
+  { name: 'EZ-Bar Curl', muscleGroup: 'Biceps', targetArea: 'Overall Biceps', equipment: 'EZ Bar', difficulty: 'Beginner', defaultSets: 3, defaultReps: '8-12', instructions: 'Use EZ-bar angled grip. Curl bar upward reducing wrist strain. Full range of motion.' },
+  { name: 'Dumbbell Curl', muscleGroup: 'Biceps', targetArea: 'Overall Biceps', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Alternating or simultaneous dumbbell curls. Keep elbows stationary at sides.' },
+  { name: 'Alternating Dumbbell Curl', muscleGroup: 'Biceps', targetArea: 'Overall Biceps', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Curl one dumbbell at a time, supinating wrist at top for peak contraction.' },
+  { name: 'Hammer Curl', muscleGroup: 'Biceps', targetArea: 'Brachialis', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Neutral grip (thumbs up). Curl dumbbell upward. Targets brachialis and forearms.' },
+  { name: 'Cross-Body Hammer Curl', muscleGroup: 'Biceps', targetArea: 'Brachialis', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Curl dumbbell across body toward opposite shoulder. Emphasizes brachialis.' },
+  { name: 'Incline Dumbbell Curl', muscleGroup: 'Biceps', targetArea: 'Long Head', equipment: 'Dumbbell', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '10-12', instructions: 'Lie on incline bench. Arms hang behind torso. Curl dumbbells up for long head stretch.' },
+  { name: 'Preacher Curl', muscleGroup: 'Biceps', targetArea: 'Short Head', equipment: 'EZ Bar', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '10-12', instructions: 'Rest upper arms on preacher pad. Curl weight up focusing on short head and peak contraction.' },
+  { name: 'Machine Preacher Curl', muscleGroup: 'Biceps', targetArea: 'Overall Biceps', equipment: 'Machine', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Sit at preacher curl machine. Curl handles upward with full range of motion.' },
+  { name: 'Cable Curl', muscleGroup: 'Biceps', targetArea: 'Overall Biceps', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Stand at low cable. Curl handle upward keeping constant tension throughout.' },
+  { name: 'Bayesian Cable Curl', muscleGroup: 'Biceps', targetArea: 'Long Head', equipment: 'Cable', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '10-12', instructions: 'Stand away from low cable pulley. Arm behind body. Curl forward for long head stretch.' },
+  { name: 'Concentration Curl', muscleGroup: 'Biceps', targetArea: 'Overall Biceps', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Seated, rest elbow on inner thigh. Curl dumbbell up for peak contraction.' },
+  { name: 'Spider Curl', muscleGroup: 'Biceps', targetArea: 'Short Head', equipment: 'Dumbbell', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '10-12', instructions: 'Lie chest-down on incline bench. Curl dumbbells up in front of body for short head emphasis.' },
+  { name: 'Reverse Curl', muscleGroup: 'Biceps', targetArea: 'Brachialis', equipment: 'Barbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Overhand grip curl. Works brachialis and brachioradialis. Full range of motion.' },
+  { name: 'Single-Arm Cable Curl', muscleGroup: 'Biceps', targetArea: 'Overall Biceps', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Stand at low cable. Curl one arm at a time for focused bicep contraction.' },
+
+  // ===== SHOULDERS — 15 exercises =====
+  { name: 'Barbell Overhead Press', muscleGroup: 'Shoulders', targetArea: 'Front Delts', equipment: 'Barbell', difficulty: 'Intermediate', defaultSets: 4, defaultReps: '6-10', instructions: 'Stand with barbell at shoulder height. Press overhead until arms fully extended.' },
+  { name: 'Dumbbell Shoulder Press', muscleGroup: 'Shoulders', targetArea: 'Front Delts', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '8-12', instructions: 'Seated or standing. Press dumbbells overhead from shoulder level.' },
+  { name: 'Arnold Press', muscleGroup: 'Shoulders', targetArea: 'Front Delts', equipment: 'Dumbbell', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '10-12', instructions: 'Start with palms facing you. Rotate palms forward as you press overhead.' },
+  { name: 'Machine Shoulder Press', muscleGroup: 'Shoulders', targetArea: 'Front Delts', equipment: 'Machine', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Sit at shoulder press machine. Press handles overhead targeting front and side delts.' },
+  { name: 'Dumbbell Lateral Raise', muscleGroup: 'Shoulders', targetArea: 'Side Delts', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Raise dumbbells out to sides to shoulder height with slight elbow bend.' },
+  { name: 'Cable Lateral Raise', muscleGroup: 'Shoulders', targetArea: 'Side Delts', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Stand beside low cable. Raise cable out to side to shoulder height.' },
+  { name: 'Machine Lateral Raise', muscleGroup: 'Shoulders', targetArea: 'Side Delts', equipment: 'Machine', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Sit at lateral raise machine. Raise arms out to sides against machine resistance.' },
+  { name: 'Leaning Cable Lateral Raise', muscleGroup: 'Shoulders', targetArea: 'Side Delts', equipment: 'Cable', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '12-15', instructions: 'Hold cable with opposite hand. Lean away from cable stack. Raise arm out to side.' },
+  { name: 'Front Dumbbell Raise', muscleGroup: 'Shoulders', targetArea: 'Front Delts', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Raise dumbbells in front of body to shoulder height. Alternate or simultaneous.' },
+  { name: 'Cable Front Raise', muscleGroup: 'Shoulders', targetArea: 'Front Delts', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Stand at low cable. Raise handle from hip to shoulder height in front of body.' },
+  { name: 'Plate Front Raise', muscleGroup: 'Shoulders', targetArea: 'Front Delts', equipment: 'Plate', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Hold weight plate with both hands. Raise from thighs to eye level.' },
+  { name: 'Reverse Pec Deck', muscleGroup: 'Shoulders', targetArea: 'Rear Delts', equipment: 'Machine', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Sit facing pec deck machine. Reverse grip to target rear delts. Pull arms apart.' },
+  { name: 'Dumbbell Rear Delt Fly', muscleGroup: 'Shoulders', targetArea: 'Rear Delts', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Hinge forward or use chest-supported. Raise arms out to sides for rear delt activation.' },
+  { name: 'Face Pull', muscleGroup: 'Shoulders', targetArea: 'Rear Delts', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '15-20', instructions: 'Set cable at face height with rope. Pull rope toward face, flaring elbows out and back.' },
+  { name: 'Cable Rear Delt Fly', muscleGroup: 'Shoulders', targetArea: 'Rear Delts', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Cross cables in front, hold opposite handles. Pull arms out and apart targeting rear delts.' },
+
+  // ===== LEGS — 15 exercises =====
+  { name: 'Barbell Back Squat', muscleGroup: 'Legs', targetArea: 'Quads', equipment: 'Barbell', difficulty: 'Intermediate', defaultSets: 4, defaultReps: '6-10', instructions: 'Bar on upper back. Feet shoulder-width apart. Squat down until thighs parallel to floor.' },
+  { name: 'Front Squat', muscleGroup: 'Legs', targetArea: 'Quads', equipment: 'Barbell', difficulty: 'Advanced', defaultSets: 3, defaultReps: '6-8', instructions: 'Bar on front deltoids. More upright torso. Squat deep targeting quads.' },
+  { name: 'Leg Press', muscleGroup: 'Legs', targetArea: 'Quads', equipment: 'Machine', difficulty: 'Beginner', defaultSets: 4, defaultReps: '10-15', instructions: 'Sit in leg press machine. Push platform away until legs nearly extended. Do not lock knees.' },
+  { name: 'Hack Squat', muscleGroup: 'Legs', targetArea: 'Quads', equipment: 'Machine', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '10-12', instructions: 'Hack squat machine. Feet shoulder-width, squat down keeping knees over toes.' },
+  { name: 'Bulgarian Split Squat', muscleGroup: 'Legs', targetArea: 'Quads', equipment: 'Dumbbell', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '8-12', instructions: 'Rear foot on bench. Lower front knee toward floor. Drive up through front heel.' },
+  { name: 'Walking Lunges', muscleGroup: 'Legs', targetArea: 'Quads', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Step forward, lower rear knee toward floor. Push off front foot, step through to next lunge.' },
+  { name: 'Reverse Lunges', muscleGroup: 'Legs', targetArea: 'Glutes', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Step backward, lower rear knee toward floor. Drive up through front heel to return.' },
+  { name: 'Romanian Deadlift', muscleGroup: 'Legs', targetArea: 'Hamstrings', equipment: 'Barbell', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '8-12', instructions: 'Hip hinge keeping bar close to legs. Lower until hamstring stretch felt. Drive hips forward to rise.' },
+  { name: 'Dumbbell Romanian Deadlift', muscleGroup: 'Legs', targetArea: 'Hamstrings', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Hip hinge with dumbbells. Lower until hamstring stretch. Drive hips through at top.' },
+  { name: 'Leg Curl', muscleGroup: 'Legs', targetArea: 'Hamstrings', equipment: 'Machine', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Lie face down on leg curl machine. Curl heels toward glutes. Lower slowly.' },
+  { name: 'Seated Leg Curl', muscleGroup: 'Legs', targetArea: 'Hamstrings', equipment: 'Machine', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Sit at seated leg curl machine. Curl legs under seat targeting hamstrings.' },
+  { name: 'Leg Extension', muscleGroup: 'Legs', targetArea: 'Quads', equipment: 'Machine', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Sit in leg extension machine. Extend legs until fully straight. Squeeze quads at top.' },
+  { name: 'Hip Thrust', muscleGroup: 'Legs', targetArea: 'Glutes', equipment: 'Barbell', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '10-15', instructions: 'Rest upper back on bench with barbell over hips. Drive hips up, squeezing glutes at top.' },
+  { name: 'Standing Calf Raise', muscleGroup: 'Legs', targetArea: 'Calves', equipment: 'Machine', difficulty: 'Beginner', defaultSets: 4, defaultReps: '15-20', instructions: 'Stand on edge of platform. Rise onto toes, hold at top, lower below platform for full stretch.' },
+  { name: 'Seated Calf Raise', muscleGroup: 'Legs', targetArea: 'Calves', equipment: 'Machine', difficulty: 'Beginner', defaultSets: 4, defaultReps: '15-20', instructions: 'Sit at seated calf raise machine. Drive balls of feet upward. Hold and lower slowly.' },
+
+  // ===== ARMS — 15 exercises (mixed biceps + triceps) =====
+  { name: 'EZ-Bar Curl (Arms)', muscleGroup: 'Arms', targetArea: 'Biceps', equipment: 'EZ Bar', difficulty: 'Beginner', defaultSets: 3, defaultReps: '8-12', instructions: 'Use EZ-bar angled grip. Curl bar upward targeting overall biceps.' },
+  { name: 'Incline Dumbbell Curl (Arms)', muscleGroup: 'Arms', targetArea: 'Biceps Long Head', equipment: 'Dumbbell', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '10-12', instructions: 'Lie on incline bench. Arms hang behind torso. Curl dumbbells up for long head stretch.' },
+  { name: 'Preacher Curl (Arms)', muscleGroup: 'Arms', targetArea: 'Biceps', equipment: 'Machine', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '10-12', instructions: 'Rest upper arms on preacher pad. Curl weight up focusing on full range of motion.' },
+  { name: 'Hammer Curl (Arms)', muscleGroup: 'Arms', targetArea: 'Brachialis', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Neutral grip (thumbs up). Curl dumbbell upward targeting brachialis.' },
+  { name: 'Cable Curl (Arms)', muscleGroup: 'Arms', targetArea: 'Biceps', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Stand at low cable. Curl handle upward keeping constant tension.' },
+  { name: 'Concentration Curl (Arms)', muscleGroup: 'Arms', targetArea: 'Biceps', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-12', instructions: 'Seated, rest elbow on inner thigh. Curl dumbbell up for peak contraction.' },
+  { name: 'Rope Hammer Curl', muscleGroup: 'Arms', targetArea: 'Biceps', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Attach rope to low cable. Curl rope upward with hammer grip targeting brachialis.' },
+  { name: 'Rope Triceps Pushdown', muscleGroup: 'Arms', targetArea: 'Triceps', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '10-15', instructions: 'Attach rope to high cable. Push down and splay rope ends outward at the bottom.' },
+  { name: 'Overhead Rope Extension', muscleGroup: 'Arms', targetArea: 'Triceps Long Head', equipment: 'Cable', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '10-15', instructions: 'Face away from cable. Extend rope overhead keeping elbows close to head.' },
+  { name: 'Skull Crushers (Arms)', muscleGroup: 'Arms', targetArea: 'Triceps', equipment: 'EZ Bar', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '10-12', instructions: 'Lie on bench. Lower EZ-bar toward forehead by bending elbows, then extend back up.' },
+  { name: 'Close-Grip Bench Press (Arms)', muscleGroup: 'Arms', targetArea: 'Triceps', equipment: 'Barbell', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '8-12', instructions: 'Narrow grip bench press. Lower to chest keeping elbows tight, press through triceps.' },
+  { name: 'Single-Arm Triceps Extension', muscleGroup: 'Arms', targetArea: 'Triceps', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Single arm cable overhead extension. Keep elbow close to head, extend fully.' },
+  { name: 'Triceps Kickback (Arms)', muscleGroup: 'Arms', targetArea: 'Triceps', equipment: 'Dumbbell', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Hinge forward. Extend forearm back squeezing lateral head of triceps.' },
+  { name: 'Reverse-Grip Pushdown (Arms)', muscleGroup: 'Arms', targetArea: 'Triceps', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Use underhand grip. Push down targeting medial and lateral head.' },
+  { name: 'Dips (Arms)', muscleGroup: 'Arms', targetArea: 'Triceps', equipment: 'Bodyweight', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '8-15', instructions: 'Parallel bar dips. Keep torso upright to focus on triceps. Lower until 90 degrees.' },
+
+  // ===== ABS — 15 exercises =====
+  { name: 'Crunch', muscleGroup: 'Abs', targetArea: 'Upper Abs', equipment: 'Bodyweight', difficulty: 'Beginner', defaultSets: 3, defaultReps: '15-20', instructions: 'Lie on back, knees bent. Curl upper body upward, contracting abs. Lower slowly.' },
+  { name: 'Cable Crunch', muscleGroup: 'Abs', targetArea: 'Upper Abs', equipment: 'Cable', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Kneel at cable with rope. Pull rope down while crunching, curling spine forward.' },
+  { name: 'Decline Sit-Up', muscleGroup: 'Abs', targetArea: 'Upper Abs', equipment: 'Bodyweight', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '12-15', instructions: 'Lie on decline bench. Perform sit-up with full range of motion, contracting abs.' },
+  { name: 'Machine Ab Crunch', muscleGroup: 'Abs', targetArea: 'Upper Abs', equipment: 'Machine', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Sit at ab crunch machine. Pull handles down while crunching forward.' },
+  { name: 'Hanging Leg Raise', muscleGroup: 'Abs', targetArea: 'Lower Abs', equipment: 'Bodyweight', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '10-15', instructions: 'Hang from pull-up bar. Raise legs to horizontal or higher. Lower slowly without swinging.' },
+  { name: 'Hanging Knee Raise', muscleGroup: 'Abs', targetArea: 'Lower Abs', equipment: 'Bodyweight', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Hang from pull-up bar. Raise knees to chest contracting lower abs.' },
+  { name: 'Lying Leg Raise', muscleGroup: 'Abs', targetArea: 'Lower Abs', equipment: 'Bodyweight', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Lie flat, raise straight legs to 90 degrees. Lower slowly without touching floor.' },
+  { name: 'Reverse Crunch', muscleGroup: 'Abs', targetArea: 'Lower Abs', equipment: 'Bodyweight', difficulty: 'Beginner', defaultSets: 3, defaultReps: '12-15', instructions: 'Lie on back. Bring knees to chest while lifting hips. Reverse the motion slowly.' },
+  { name: "Captain's Chair Knee Raise", muscleGroup: 'Abs', targetArea: 'Lower Abs', equipment: 'Machine', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '12-15', instructions: 'Support body on captain\'s chair. Raise knees to chest or legs straight for harder variation.' },
+  { name: 'Ab Wheel Rollout', muscleGroup: 'Abs', targetArea: 'Core', equipment: 'None', difficulty: 'Advanced', defaultSets: 3, defaultReps: '8-12', instructions: 'Kneel with ab wheel. Roll forward extending body, return using core strength only.' },
+  { name: 'Plank', muscleGroup: 'Abs', targetArea: 'Core', equipment: 'Bodyweight', difficulty: 'Beginner', defaultSets: 3, defaultReps: '30-60 sec', instructions: 'Hold push-up position on forearms. Keep body straight and core engaged throughout.' },
+  { name: 'Side Plank', muscleGroup: 'Abs', targetArea: 'Obliques', equipment: 'Bodyweight', difficulty: 'Beginner', defaultSets: 3, defaultReps: '20-40 sec each', instructions: 'Support body on one forearm and side of foot. Keep hips elevated. Hold position.' },
+  { name: 'Russian Twist', muscleGroup: 'Abs', targetArea: 'Obliques', equipment: 'Bodyweight', difficulty: 'Beginner', defaultSets: 3, defaultReps: '20 total', instructions: 'Seated, feet off floor. Rotate torso side to side, touching floor each side.' },
+  { name: 'Bicycle Crunch', muscleGroup: 'Abs', targetArea: 'Obliques', equipment: 'Bodyweight', difficulty: 'Beginner', defaultSets: 3, defaultReps: '20 total', instructions: 'Lie on back. Alternate bringing opposite elbow to opposite knee in cycling motion.' },
+  { name: 'Pallof Press', muscleGroup: 'Abs', targetArea: 'Core', equipment: 'Cable', difficulty: 'Intermediate', defaultSets: 3, defaultReps: '10-12', instructions: 'Stand perpendicular to cable. Press handles straight out and back. Resist rotation with core.' }
+];
+
+const seed = async () => {
+  try {
+    await connectDB();
+    console.log('Connected to MongoDB');
+
+    // Clear existing non-custom exercises
+    await Exercise.deleteMany({ isCustom: false });
+    console.log('Cleared existing exercises');
+
+    // Insert all exercises
+    const inserted = await Exercise.insertMany(exercises);
+    console.log(`Seeded ${inserted.length} exercises`);
+
+    // Log breakdown by muscle group
+    const groups = {};
+    exercises.forEach(e => {
+      groups[e.muscleGroup] = (groups[e.muscleGroup] || 0) + 1;
+    });
+    console.log('\nBreakdown by muscle group:');
+    Object.entries(groups).forEach(([g, count]) => console.log(`  ${g}: ${count} exercises`));
+
+    console.log('\nSeed completed successfully!');
+    process.exit(0);
+  } catch (error) {
+    console.error('Seed error:', error);
+    process.exit(1);
+  }
+};
+
+seed();
