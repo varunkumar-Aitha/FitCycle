@@ -1,82 +1,30 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 /**
- * Build a Nodemailer transporter from env vars.
- * Supports:
- *   - Gmail (EMAIL_SERVICE=gmail)
- *   - Any SMTP host/port
- *   - Dev fallback: logs OTP to console when EMAIL_USER is not set
+ * Email service — uses Resend HTTPS API in production.
+ * Falls back to console.log in development when RESEND_API_KEY is not set.
+ *
+ * Required env var (production / Render):
+ *   RESEND_API_KEY   — from resend.com dashboard
+ *   RESEND_FROM      — verified sender, e.g. "FitCycle <onboarding@resend.dev>"
+ *                      Use onboarding@resend.dev to send to YOUR OWN email while testing.
+ *                      For sending to any address, verify a custom domain in Resend.
  */
-const createTransporter = () => {
-  // Accept both EMAIL_PASSWORD (user's key) and EMAIL_PASS (legacy)
-  const emailPass = process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS;
 
-  // ── DIAGNOSTIC LOGS (remove after debugging) ──────────────────────────
-  console.log('[EMAIL] createTransporter called');
-  console.log('[EMAIL] EMAIL_USER set     :', !!process.env.EMAIL_USER);
-  console.log('[EMAIL] EMAIL_PASSWORD set :', !!process.env.EMAIL_PASSWORD);
-  console.log('[EMAIL] EMAIL_PASS set     :', !!process.env.EMAIL_PASS);
-  console.log('[EMAIL] emailPass resolved :', !!emailPass);
-  console.log('[EMAIL] EMAIL_SERVICE      :', process.env.EMAIL_SERVICE);
-  console.log('[EMAIL] EMAIL_HOST         :', process.env.EMAIL_HOST);
-  console.log('[EMAIL] EMAIL_PORT         :', process.env.EMAIL_PORT);
-  console.log('[EMAIL] EMAIL_SECURE       :', process.env.EMAIL_SECURE);
-  // ──────────────────────────────────────────────────────────────────────
-
-  if (!process.env.EMAIL_USER || !emailPass) {
-    console.log('[EMAIL] WARNING: EMAIL_USER or password missing — falling back to console');
-    return null; // will use console fallback
-  }
-
-  if (process.env.EMAIL_SERVICE === 'gmail') {
-    // Use explicit host/port instead of the 'service' shorthand.
-    // Render (and most cloud hosts) block port 587 (STARTTLS); port 465 (SSL) works.
-    console.log('[EMAIL] Branch: gmail → host=smtp.gmail.com port=465 secure=true');
-    return nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true, // SSL — required for port 465
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: emailPass
-      }
-    });
-  }
-
-  if (process.env.EMAIL_SERVICE) {
-    console.log('[EMAIL] Branch: generic service shorthand →', process.env.EMAIL_SERVICE);
-    return nodemailer.createTransport({
-      service: process.env.EMAIL_SERVICE,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: emailPass
-      }
-    });
-  }
-
-  // Generic SMTP — this branch is hit when EMAIL_SERVICE is NOT set
-  const host   = process.env.EMAIL_HOST   || 'smtp.gmail.com';
-  const port   = parseInt(process.env.EMAIL_PORT || '587');
-  const secure = process.env.EMAIL_SECURE === 'true';
-  console.log(`[EMAIL] Branch: generic SMTP → host=${host} port=${port} secure=${secure}`);
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure,
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: emailPass
-    }
-  });
+const getResend = () => {
+  if (!process.env.RESEND_API_KEY) return null;
+  return new Resend(process.env.RESEND_API_KEY);
 };
 
-/**
- * Send an OTP verification email.
- * Falls back to console.log in development when email is not configured.
- */
-const sendOtpEmail = async ({ to, name, otp }) => {
-  const transporter = createTransporter();
+// "from" address — falls back to Resend's shared test address so the app
+// works out-of-the-box before a custom domain is verified.
+const FROM_ADDRESS =
+  process.env.RESEND_FROM || 'FitCycle <onboarding@resend.dev>';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// sendOtpEmail
+// ─────────────────────────────────────────────────────────────────────────────
+const sendOtpEmail = async ({ to, name, otp }) => {
   const html = `
 <!DOCTYPE html>
 <html>
@@ -129,44 +77,39 @@ const sendOtpEmail = async ({ to, name, otp }) => {
 </html>
   `;
 
-  // No email config — log to console for development
-  if (!transporter) {
+  const resend = getResend();
+
+  // Dev fallback — no API key configured
+  if (!resend) {
     console.log('\n========================================');
-    console.log('  OTP EMAIL (dev mode — no SMTP set)');
+    console.log('  OTP EMAIL (dev mode — no RESEND_API_KEY)');
     console.log('========================================');
     console.log(`  To   : ${to}`);
     console.log(`  Name : ${name}`);
     console.log(`  OTP  : ${otp}`);
     console.log('========================================\n');
-    return { messageId: 'console-dev' };
+    return { id: 'console-dev' };
   }
 
-  // ── DIAGNOSTIC: verify SMTP connection before sending ─────────────────
-  console.log('[EMAIL] Running transporter.verify()...');
-  try {
-    await transporter.verify();
-    console.log('[EMAIL] transporter.verify() PASSED — SMTP connection OK');
-  } catch (verifyErr) {
-    console.error('[EMAIL] transporter.verify() FAILED:', verifyErr.message);
-    console.error('[EMAIL] verify error code    :', verifyErr.code);
-    console.error('[EMAIL] verify error command :', verifyErr.command);
-    throw verifyErr; // surface as 500 immediately instead of waiting for sendMail timeout
-  }
-  // ──────────────────────────────────────────────────────────────────────
-
-  console.log('[EMAIL] Calling transporter.sendMail()...');
-  const info = await transporter.sendMail({
-    from: `"FitCycle" <${process.env.EMAIL_USER}>`,
+  const { data, error } = await resend.emails.send({
+    from: FROM_ADDRESS,
     to,
     subject: `${otp} is your FitCycle verification code`,
     text: `Hi ${name},\n\nYour OTP is: ${otp}\n\nValid for 15 minutes. Do not share this with anyone.`,
     html
   });
 
-  return info;
+  if (error) {
+    console.error('[EMAIL] Resend error:', error);
+    throw new Error(error.message || 'Failed to send OTP email');
+  }
+
+  return data;
 };
 
-module.exports = { sendOtpEmail, sendWaterReminderEmail };
+// ─────────────────────────────────────────────────────────────────────────────
+// sendWaterReminderEmail
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Send a water reminder email.
@@ -177,37 +120,35 @@ module.exports = { sendOtpEmail, sendWaterReminderEmail };
  * @param {number} opts.goalMl     – daily water goal (ml)
  */
 async function sendWaterReminderEmail({ to, name, totalMl, goalMl }) {
-  const transporter = createTransporter();
-
-  const pct       = Math.min(Math.round((totalMl / goalMl) * 100), 100)
-  const remaining = Math.max(goalMl - totalMl, 0)
-  const remL      = (remaining / 1000).toFixed(1)
-  const totalL    = (totalMl  / 1000).toFixed(1)
-  const goalL     = (goalMl   / 1000).toFixed(1)
+  const pct       = Math.min(Math.round((totalMl / goalMl) * 100), 100);
+  const remaining = Math.max(goalMl - totalMl, 0);
+  const remL      = (remaining / 1000).toFixed(1);
+  const totalL    = (totalMl  / 1000).toFixed(1);
+  const goalL     = (goalMl   / 1000).toFixed(1);
 
   // Pick a motivational message based on progress
-  let motivation, emoji
+  let motivation, emoji;
   if (pct === 0) {
-    motivation = "You haven't had any water today yet. Start now — even a small glass makes a big difference!"
-    emoji = '🥤'
+    motivation = "You haven't had any water today yet. Start now — even a small glass makes a big difference!";
+    emoji = '🥤';
   } else if (pct < 25) {
-    motivation = `You've had ${totalL}L so far. Keep going — you're just getting started. Your muscles need water to recover!`
-    emoji = '💧'
+    motivation = `You've had ${totalL}L so far. Keep going — you're just getting started. Your muscles need water to recover!`;
+    emoji = '💧';
   } else if (pct < 50) {
-    motivation = `You're at ${pct}% of your goal (${totalL}L). Drink ${remL}L more to hit your target. Halfway there!`
-    emoji = '💦'
+    motivation = `You're at ${pct}% of your goal (${totalL}L). Drink ${remL}L more to hit your target. Halfway there!`;
+    emoji = '💦';
   } else if (pct < 75) {
-    motivation = `Great progress! You've had ${totalL}L — you're more than halfway. Just ${remL}L to go!`
-    emoji = '🌊'
+    motivation = `Great progress! You've had ${totalL}L — you're more than halfway. Just ${remL}L to go!`;
+    emoji = '🌊';
   } else if (pct < 100) {
-    motivation = `Almost there! Only ${remL}L left to reach your daily goal of ${goalL}L. Finish strong!`
-    emoji = '🏆'
+    motivation = `Almost there! Only ${remL}L left to reach your daily goal of ${goalL}L. Finish strong!`;
+    emoji = '🏆';
   } else {
-    motivation = `Amazing! You've already hit your daily water goal of ${goalL}L. Stay hydrated and keep crushing it!`
-    emoji = '🎉'
+    motivation = `Amazing! You've already hit your daily water goal of ${goalL}L. Stay hydrated and keep crushing it!`;
+    emoji = '🎉';
   }
 
-  const progressWidth = `${pct}%`
+  const progressWidth = `${pct}%`;
 
   const html = `
 <!DOCTYPE html>
@@ -287,21 +228,33 @@ async function sendWaterReminderEmail({ to, name, totalMl, goalMl }) {
   </div>
 </body>
 </html>
-  `
+  `;
 
-  if (!transporter) {
-    console.log('\n==============================')
-    console.log('  WATER REMINDER (dev — no SMTP)')
-    console.log(`  To: ${to} | Progress: ${pct}% (${totalL}L / ${goalL}L)`)
-    console.log('==============================\n')
-    return { messageId: 'console-dev' }
+  const resend = getResend();
+
+  // Dev fallback — no API key configured
+  if (!resend) {
+    console.log('\n==============================');
+    console.log('  WATER REMINDER (dev — no RESEND_API_KEY)');
+    console.log(`  To: ${to} | Progress: ${pct}% (${totalL}L / ${goalL}L)`);
+    console.log('==============================\n');
+    return { id: 'console-dev' };
   }
 
-  return transporter.sendMail({
-    from: `"FitCycle" <${process.env.EMAIL_USER}>`,
+  const { data, error } = await resend.emails.send({
+    from: FROM_ADDRESS,
     to,
     subject: `${emoji} Time to drink water! You're at ${pct}% of your daily goal`,
     text: `Hey ${name},\n\n${motivation}\n\nToday: ${totalL}L / ${goalL}L (${pct}%)\n\nLog water: ${process.env.CLIENT_URL || 'http://localhost:5173'}/water`,
     html
-  })
+  });
+
+  if (error) {
+    console.error('[EMAIL] Resend water reminder error:', error);
+    throw new Error(error.message || 'Failed to send water reminder email');
+  }
+
+  return data;
 }
+
+module.exports = { sendOtpEmail, sendWaterReminderEmail };
