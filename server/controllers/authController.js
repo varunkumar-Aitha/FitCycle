@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const PendingUser = require('../models/PendingUser');
@@ -26,7 +25,8 @@ const generateOtp = () => {
 // ─────────────────────────────────────────────
 const register = async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email: rawEmail, password } = req.body;
+    const email = rawEmail.toLowerCase().trim();
 
     // Block if a verified account already exists
     const existingUser = await User.findOne({ email });
@@ -109,9 +109,10 @@ const verifyOtp = async (req, res, next) => {
     }
 
     // OTP is correct — create the real User.
-    // pending.password is already bcrypt-hashed (by PendingUser's pre-save hook).
-    // We use collection.insertOne to bypass the User pre-save hook and avoid
-    // double-hashing the password.
+    // pending.password is already bcrypt-hashed by PendingUser's pre-save hook.
+    // Use collection.insertOne to bypass the User pre-save hook and avoid
+    // double-hashing, but include ALL schema defaults so gamification fields exist.
+    const now = new Date();
     const savedUser = await User.collection.insertOne({
       name: pending.name,
       email: pending.email,
@@ -119,8 +120,23 @@ const verifyOtp = async (req, res, next) => {
       calorieGoal: 2200,
       proteinGoal: 120,
       waterGoal: 3000,
-      planStartDate: new Date(),
-      createdAt: new Date()
+      planStartDate: now,
+      createdAt: now,
+      // Gamification defaults (must mirror User schema)
+      xp: 0,
+      workoutXP: 0,
+      nutritionXP: 0,
+      waterXP: 0,
+      fitnessLevel: 1,
+      totalWorkouts: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      lastWorkoutDate: null,
+      totalSetsCompleted: 0,
+      totalExercisesCompleted: 0,
+      achievements: [],
+      waterReminderEnabled: false,
+      waterReminderHours: [8, 10, 12, 14, 16, 18, 20, 22]
     });
 
     // Clean up the pending record
@@ -140,8 +156,8 @@ const verifyOtp = async (req, res, next) => {
         calorieGoal: 2200,
         proteinGoal: 120,
         waterGoal: 3000,
-        planStartDate: new Date(),
-        createdAt: new Date()
+        planStartDate: now,
+        createdAt: now
       }
     });
   } catch (error) {
@@ -221,8 +237,9 @@ const resendOtp = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
 
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email: normalizedEmail }).select('+password');
     if (!user || !(await user.matchPassword(password))) {
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }

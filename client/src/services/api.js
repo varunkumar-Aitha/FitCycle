@@ -20,10 +20,13 @@ api.interceptors.request.use(
 )
 
 // Handle expired/invalid tokens globally
+// Skip redirect for auth endpoints — let the page handle those errors itself
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const url = error.config?.url || ''
+    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/verify-otp') || url.includes('/auth/resend-otp')
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem('token')
       window.location.href = '/login'
     }
