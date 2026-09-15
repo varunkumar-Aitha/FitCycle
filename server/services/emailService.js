@@ -11,13 +11,27 @@ const createTransporter = () => {
   // Accept both EMAIL_PASSWORD (user's key) and EMAIL_PASS (legacy)
   const emailPass = process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS;
 
+  // ── DIAGNOSTIC LOGS (remove after debugging) ──────────────────────────
+  console.log('[EMAIL] createTransporter called');
+  console.log('[EMAIL] EMAIL_USER set     :', !!process.env.EMAIL_USER);
+  console.log('[EMAIL] EMAIL_PASSWORD set :', !!process.env.EMAIL_PASSWORD);
+  console.log('[EMAIL] EMAIL_PASS set     :', !!process.env.EMAIL_PASS);
+  console.log('[EMAIL] emailPass resolved :', !!emailPass);
+  console.log('[EMAIL] EMAIL_SERVICE      :', process.env.EMAIL_SERVICE);
+  console.log('[EMAIL] EMAIL_HOST         :', process.env.EMAIL_HOST);
+  console.log('[EMAIL] EMAIL_PORT         :', process.env.EMAIL_PORT);
+  console.log('[EMAIL] EMAIL_SECURE       :', process.env.EMAIL_SECURE);
+  // ──────────────────────────────────────────────────────────────────────
+
   if (!process.env.EMAIL_USER || !emailPass) {
+    console.log('[EMAIL] WARNING: EMAIL_USER or password missing — falling back to console');
     return null; // will use console fallback
   }
 
   if (process.env.EMAIL_SERVICE === 'gmail') {
     // Use explicit host/port instead of the 'service' shorthand.
     // Render (and most cloud hosts) block port 587 (STARTTLS); port 465 (SSL) works.
+    console.log('[EMAIL] Branch: gmail → host=smtp.gmail.com port=465 secure=true');
     return nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 465,
@@ -30,6 +44,7 @@ const createTransporter = () => {
   }
 
   if (process.env.EMAIL_SERVICE) {
+    console.log('[EMAIL] Branch: generic service shorthand →', process.env.EMAIL_SERVICE);
     return nodemailer.createTransport({
       service: process.env.EMAIL_SERVICE,
       auth: {
@@ -39,11 +54,15 @@ const createTransporter = () => {
     });
   }
 
-  // Generic SMTP
+  // Generic SMTP — this branch is hit when EMAIL_SERVICE is NOT set
+  const host   = process.env.EMAIL_HOST   || 'smtp.gmail.com';
+  const port   = parseInt(process.env.EMAIL_PORT || '587');
+  const secure = process.env.EMAIL_SECURE === 'true';
+  console.log(`[EMAIL] Branch: generic SMTP → host=${host} port=${port} secure=${secure}`);
   return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_PORT || '587'),
-    secure: process.env.EMAIL_SECURE === 'true',
+    host,
+    port,
+    secure,
     auth: {
       user: process.env.EMAIL_USER,
       pass: emailPass
@@ -122,6 +141,20 @@ const sendOtpEmail = async ({ to, name, otp }) => {
     return { messageId: 'console-dev' };
   }
 
+  // ── DIAGNOSTIC: verify SMTP connection before sending ─────────────────
+  console.log('[EMAIL] Running transporter.verify()...');
+  try {
+    await transporter.verify();
+    console.log('[EMAIL] transporter.verify() PASSED — SMTP connection OK');
+  } catch (verifyErr) {
+    console.error('[EMAIL] transporter.verify() FAILED:', verifyErr.message);
+    console.error('[EMAIL] verify error code    :', verifyErr.code);
+    console.error('[EMAIL] verify error command :', verifyErr.command);
+    throw verifyErr; // surface as 500 immediately instead of waiting for sendMail timeout
+  }
+  // ──────────────────────────────────────────────────────────────────────
+
+  console.log('[EMAIL] Calling transporter.sendMail()...');
   const info = await transporter.sendMail({
     from: `"FitCycle" <${process.env.EMAIL_USER}>`,
     to,
