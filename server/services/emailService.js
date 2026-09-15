@@ -1,25 +1,25 @@
-const { Resend } = require('resend');
+const Brevo = require('@getbrevo/brevo');
 
 /**
- * Email service — uses Resend HTTPS API in production.
- * Falls back to console.log in development when RESEND_API_KEY is not set.
+ * Email service — uses Brevo HTTP API in production.
+ * Falls back to console.log in development when BREVO_API_KEY is not set.
  *
- * Required env var (production / Render):
- *   RESEND_API_KEY   — from resend.com dashboard
- *   RESEND_FROM      — verified sender, e.g. "FitCycle <onboarding@resend.dev>"
- *                      Use onboarding@resend.dev to send to YOUR OWN email while testing.
- *                      For sending to any address, verify a custom domain in Resend.
+ * Required env vars (Render):
+ *   BREVO_API_KEY      — from app.brevo.com → SMTP & API → API Keys
+ *   BREVO_FROM_EMAIL   — the sender address you verified in Brevo
+ *   BREVO_FROM_NAME    — display name, e.g. "FitCycle"
  */
 
-const getResend = () => {
-  if (!process.env.RESEND_API_KEY) return null;
-  return new Resend(process.env.RESEND_API_KEY);
+const getBrevoClient = () => {
+  if (!process.env.BREVO_API_KEY) return null;
+
+  const client = Brevo.ApiClient.instance;
+  client.authentications['api-key'].apiKey = process.env.BREVO_API_KEY;
+  return new Brevo.TransactionalEmailsApi();
 };
 
-// "from" address — falls back to Resend's shared test address so the app
-// works out-of-the-box before a custom domain is verified.
-const FROM_ADDRESS =
-  process.env.RESEND_FROM || 'FitCycle <onboarding@resend.dev>';
+const FROM_EMAIL = () => process.env.BREVO_FROM_EMAIL || '';
+const FROM_NAME  = () => process.env.BREVO_FROM_NAME  || 'FitCycle';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // sendOtpEmail
@@ -77,34 +77,34 @@ const sendOtpEmail = async ({ to, name, otp }) => {
 </html>
   `;
 
-  const resend = getResend();
+  const api = getBrevoClient();
 
   // Dev fallback — no API key configured
-  if (!resend) {
+  if (!api) {
     console.log('\n========================================');
-    console.log('  OTP EMAIL (dev mode — no RESEND_API_KEY)');
+    console.log('  OTP EMAIL (dev mode — no BREVO_API_KEY)');
     console.log('========================================');
     console.log(`  To   : ${to}`);
     console.log(`  Name : ${name}`);
     console.log(`  OTP  : ${otp}`);
     console.log('========================================\n');
-    return { id: 'console-dev' };
+    return { messageId: 'console-dev' };
   }
 
-  const { data, error } = await resend.emails.send({
-    from: FROM_ADDRESS,
-    to,
-    subject: `${otp} is your FitCycle verification code`,
-    text: `Hi ${name},\n\nYour OTP is: ${otp}\n\nValid for 15 minutes. Do not share this with anyone.`,
-    html
-  });
+  const email = new Brevo.SendSmtpEmail();
+  email.sender      = { name: FROM_NAME(), email: FROM_EMAIL() };
+  email.to          = [{ email: to, name }];
+  email.subject     = `${otp} is your FitCycle verification code`;
+  email.htmlContent = html;
+  email.textContent = `Hi ${name},\n\nYour OTP is: ${otp}\n\nValid for 15 minutes. Do not share this with anyone.`;
 
-  if (error) {
-    console.error('[EMAIL] Resend error:', error);
-    throw new Error(error.message || 'Failed to send OTP email');
+  try {
+    const result = await api.sendTransacEmail(email);
+    return result;
+  } catch (err) {
+    console.error('[EMAIL] Brevo OTP send failed:', err.status, err.message);
+    throw new Error('Failed to send OTP email');
   }
-
-  return data;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -126,7 +126,6 @@ async function sendWaterReminderEmail({ to, name, totalMl, goalMl }) {
   const totalL    = (totalMl  / 1000).toFixed(1);
   const goalL     = (goalMl   / 1000).toFixed(1);
 
-  // Pick a motivational message based on progress
   let motivation, emoji;
   if (pct === 0) {
     motivation = "You haven't had any water today yet. Start now — even a small glass makes a big difference!";
@@ -230,31 +229,31 @@ async function sendWaterReminderEmail({ to, name, totalMl, goalMl }) {
 </html>
   `;
 
-  const resend = getResend();
+  const api = getBrevoClient();
 
   // Dev fallback — no API key configured
-  if (!resend) {
+  if (!api) {
     console.log('\n==============================');
-    console.log('  WATER REMINDER (dev — no RESEND_API_KEY)');
+    console.log('  WATER REMINDER (dev — no BREVO_API_KEY)');
     console.log(`  To: ${to} | Progress: ${pct}% (${totalL}L / ${goalL}L)`);
     console.log('==============================\n');
-    return { id: 'console-dev' };
+    return { messageId: 'console-dev' };
   }
 
-  const { data, error } = await resend.emails.send({
-    from: FROM_ADDRESS,
-    to,
-    subject: `${emoji} Time to drink water! You're at ${pct}% of your daily goal`,
-    text: `Hey ${name},\n\n${motivation}\n\nToday: ${totalL}L / ${goalL}L (${pct}%)\n\nLog water: ${process.env.CLIENT_URL || 'http://localhost:5173'}/water`,
-    html
-  });
+  const email = new Brevo.SendSmtpEmail();
+  email.sender      = { name: FROM_NAME(), email: FROM_EMAIL() };
+  email.to          = [{ email: to, name }];
+  email.subject     = `${emoji} Time to drink water! You're at ${pct}% of your daily goal`;
+  email.htmlContent = html;
+  email.textContent = `Hey ${name},\n\n${motivation}\n\nToday: ${totalL}L / ${goalL}L (${pct}%)\n\nLog water: ${process.env.CLIENT_URL || 'http://localhost:5173'}/water`;
 
-  if (error) {
-    console.error('[EMAIL] Resend water reminder error:', error);
-    throw new Error(error.message || 'Failed to send water reminder email');
+  try {
+    const result = await api.sendTransacEmail(email);
+    return result;
+  } catch (err) {
+    console.error('[EMAIL] Brevo water reminder send failed:', err.status, err.message);
+    throw new Error('Failed to send water reminder email');
   }
-
-  return data;
 }
 
 module.exports = { sendOtpEmail, sendWaterReminderEmail };

@@ -9,6 +9,7 @@
     "seed": "node utils/seed.js"
   },
   "dependencies": {
+    "@getbrevo/brevo": "^6.0.3",
     "bcryptjs": "^2.4.3",
     "compression": "^1.8.2",
     "cors": "^2.8.5",
@@ -20,8 +21,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.0.3",
     "morgan": "^1.10.0",
-    "node-cron": "^4.6.0",
-    "resend": "^6.28.0"
+    "node-cron": "^4.6.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
