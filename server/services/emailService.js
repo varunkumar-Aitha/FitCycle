@@ -1,4 +1,4 @@
-const Brevo = require('@getbrevo/brevo');
+const { BrevoClient } = require('@getbrevo/brevo');
 
 /**
  * Email service — uses Brevo HTTP API in production.
@@ -12,10 +12,7 @@ const Brevo = require('@getbrevo/brevo');
 
 const getBrevoClient = () => {
   if (!process.env.BREVO_API_KEY) return null;
-
-  const client = Brevo.ApiClient.instance;
-  client.authentications['api-key'].apiKey = process.env.BREVO_API_KEY;
-  return new Brevo.TransactionalEmailsApi();
+  return new BrevoClient({ apiKey: process.env.BREVO_API_KEY });
 };
 
 const FROM_EMAIL = () => process.env.BREVO_FROM_EMAIL || '';
@@ -91,15 +88,14 @@ const sendOtpEmail = async ({ to, name, otp }) => {
     return { messageId: 'console-dev' };
   }
 
-  const email = new Brevo.SendSmtpEmail();
-  email.sender      = { name: FROM_NAME(), email: FROM_EMAIL() };
-  email.to          = [{ email: to, name }];
-  email.subject     = `${otp} is your FitCycle verification code`;
-  email.htmlContent = html;
-  email.textContent = `Hi ${name},\n\nYour OTP is: ${otp}\n\nValid for 15 minutes. Do not share this with anyone.`;
-
   try {
-    const result = await api.sendTransacEmail(email);
+    const result = await api.transactionalEmails.sendTransacEmail({
+      sender:      { name: FROM_NAME(), email: FROM_EMAIL() },
+      to:          [{ email: to, name }],
+      subject:     `${otp} is your FitCycle verification code`,
+      htmlContent: html,
+      textContent: `Hi ${name},\n\nYour OTP is: ${otp}\n\nValid for 15 minutes. Do not share this with anyone.`
+    });
     return result;
   } catch (err) {
     console.error('[EMAIL] Brevo OTP send failed:', err.status, err.message);
@@ -240,15 +236,14 @@ async function sendWaterReminderEmail({ to, name, totalMl, goalMl }) {
     return { messageId: 'console-dev' };
   }
 
-  const email = new Brevo.SendSmtpEmail();
-  email.sender      = { name: FROM_NAME(), email: FROM_EMAIL() };
-  email.to          = [{ email: to, name }];
-  email.subject     = `${emoji} Time to drink water! You're at ${pct}% of your daily goal`;
-  email.htmlContent = html;
-  email.textContent = `Hey ${name},\n\n${motivation}\n\nToday: ${totalL}L / ${goalL}L (${pct}%)\n\nLog water: ${process.env.CLIENT_URL || 'http://localhost:5173'}/water`;
-
   try {
-    const result = await api.sendTransacEmail(email);
+    const result = await api.transactionalEmails.sendTransacEmail({
+      sender:      { name: FROM_NAME(), email: FROM_EMAIL() },
+      to:          [{ email: to, name }],
+      subject:     `${emoji} Time to drink water! You're at ${pct}% of your daily goal`,
+      htmlContent: html,
+      textContent: `Hey ${name},\n\n${motivation}\n\nToday: ${totalL}L / ${goalL}L (${pct}%)\n\nLog water: ${process.env.CLIENT_URL || 'http://localhost:5173'}/water`
+    });
     return result;
   } catch (err) {
     console.error('[EMAIL] Brevo water reminder send failed:', err.status, err.message);
