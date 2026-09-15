@@ -31,7 +31,19 @@ const MUSCLE_COLORS = {
   Abs: '#ec4899'
 }
 
+// In dev the Vite proxy serves /videos directly from Express (no host needed).
+// In prod VITE_API_URL is the Render origin (e.g. https://fitcycle-api.onrender.com).
 const SERVER_BASE = import.meta.env.VITE_API_URL || ''
+
+// Build a safe video URL: percent-encode the filename portion so spaces and
+// special characters (–, +, etc.) don't break the browser fetch.
+const buildVideoUrl = (videoUrl) => {
+  if (!videoUrl) return null
+  // videoUrl is like /videos/Barbell Bench Press.webm
+  const parts = videoUrl.split('/')          // ['', 'videos', 'Barbell Bench Press.webm']
+  const encoded = parts.map((p, i) => i === 0 ? p : encodeURIComponent(p)).join('/')
+  return SERVER_BASE + encoded
+}
 const SETS_PER_EXERCISE = 3
 
 const defaultSet = (n) => ({ setNumber: n, weight: 0, reps: 0, completed: false, notes: '' })
@@ -119,14 +131,39 @@ const GymSession = () => {
       const res = await workoutService.getById(sessionId)
       const s = res.data.session
       setSession(s)
+
+      // If already completed, go straight to the completed view (read-only)
+      if (s.status === 'completed') {
+        const exs = s.exercises.map(ex => ({
+          ...ex,
+          exercise: ex.exercise?._id || ex.exercise,
+          sets: ex.sets.length > 0 ? ex.sets : Array.from({ length: SETS_PER_EXERCISE }, (_, i) => defaultSet(i + 1))
+        }))
+        setExercises(exs)
+        setPhase('complete')
+        return
+      }
+
+      // in_progress but exercises were never added (stale/empty session from before seed)
+      // → drop to the select screen so the user picks a workout type and gets suggestions
+      if (s.exercises.length === 0) {
+        const wt = s.workoutType
+        const matched = WORKOUT_TYPES.find(w => w.type === wt)
+        if (matched) {
+          setSelectedType(matched)
+          loadSuggestions(matched.type)
+        }
+        setPhase('select')
+        return
+      }
+
       const exs = s.exercises.map(ex => ({
         ...ex,
         exercise: ex.exercise?._id || ex.exercise,
         sets: ex.sets.length > 0 ? ex.sets : Array.from({ length: SETS_PER_EXERCISE }, (_, i) => defaultSet(i + 1))
       }))
       setExercises(exs)
-      // If already completed, go straight to the completed view (read-only)
-      setPhase(s.status === 'completed' ? 'complete' : 'session')
+      setPhase('session')
     } catch (err) {
       setError('Unable to load workout session.')
       setPhase('select')
@@ -236,13 +273,24 @@ const GymSession = () => {
         }
       }
 
-      const res = await workoutService.create({
-        workoutType: selectedType.type,
-        dayNumber: selectedType.dayNumber,
-        exercises: exercisesToUse
-      })
+      let activeSession = session
 
-      setSession(res.data.session)
+      // If we arrived here from an existing empty in_progress session (e.g. stale
+      // session loaded via /gym-session/:id with 0 exercises), reuse it via update
+      // instead of creating a duplicate.
+      if (activeSession && activeSession.status === 'in_progress') {
+        const res = await workoutService.update(activeSession._id, { exercises: exercisesToUse })
+        activeSession = res.data.session
+      } else {
+        const res = await workoutService.create({
+          workoutType: selectedType.type,
+          dayNumber: selectedType.dayNumber,
+          exercises: exercisesToUse
+        })
+        activeSession = res.data.session
+      }
+
+      setSession(activeSession)
       setExercises(exercisesToUse)
       setPhase('session')
     } catch (err) {
@@ -700,7 +748,7 @@ const GymSession = () => {
                         {ex.videoUrl && (
                           <button
                             className="btn-video"
-                            onClick={() => openVideo(SERVER_BASE + ex.videoUrl, ex.exerciseName)}
+                            onClick={() => openVideo(buildVideoUrl(ex.videoUrl), ex.exerciseName)}
                             title="Watch exercise video"
                           >
                             ▶

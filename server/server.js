@@ -37,10 +37,17 @@ app.use(cors({
   credentials: true
 }));
 
-// Compress all JSON/text responses (gzip)
-app.use(compression());
+// Compress JSON/text responses only — exclude video/audio so HTTP range
+// requests (needed for video seeking) are never broken by gzip.
+app.use(compression({
+  filter: (req, res) => {
+    const ct = res.getHeader('Content-Type') || ''
+    if (/^video\/|^audio\//.test(ct)) return false
+    return compression.filter(req, res)
+  }
+}));
 
-// Static files (videos etc.)
+// Static files — mounted AFTER cors so video responses carry CORS headers
 app.use('/videos', express.static(path.join(__dirname, 'public/videos')));
 
 // Rate limiting
