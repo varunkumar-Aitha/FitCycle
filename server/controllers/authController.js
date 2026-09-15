@@ -25,6 +25,7 @@ const generateOtp = () => {
 // ─────────────────────────────────────────────
 const register = async (req, res, next) => {
   try {
+    console.log("REGISTER: START");
     const { name, email: rawEmail, password } = req.body;
     const email = rawEmail.toLowerCase().trim();
 
@@ -34,23 +35,30 @@ const register = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
 
+    console.log("REGISTER: generating OTP");
     const otp = generateOtp();
     const otpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    console.log("REGISTER: OTP generated");
 
     // Remove any previous pending entry for this email (e.g. user clicked resend)
+    console.log("REGISTER: saving OTP/user");
     await PendingUser.deleteMany({ email });
 
     // Create pending record (password + OTP will be hashed by pre-save hook)
     await PendingUser.create({ name, email, password, otp, otpExpires });
+    console.log("REGISTER: OTP/user saved");
 
     // Send OTP email (console-only in dev if EMAIL_USER not set)
+    console.log("REGISTER: sending email");
     await sendOtpEmail({ to: email, name, otp });
+    console.log("REGISTER: EMAIL SENT");
 
     res.status(200).json({
       success: true,
       message: 'OTP sent to your email address. Please verify to complete registration.',
       email // return email so frontend can pre-fill the OTP screen
     });
+    console.log("REGISTER: COMPLETE");
   } catch (error) {
     next(error);
   }
