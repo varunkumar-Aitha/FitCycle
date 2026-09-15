@@ -22,6 +22,10 @@ const gamemapRoutes = require('./routes/gamemap');
 const path = require('path');
 const app = express();
 
+// Trust Render/Heroku/Railway load-balancer proxy.
+// Required for express-rate-limit to read X-Forwarded-For correctly.
+app.set('trust proxy', 1);
+
 // Connect to MongoDB
 connectDB();
 

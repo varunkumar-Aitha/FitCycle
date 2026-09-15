@@ -15,9 +15,23 @@ const createTransporter = () => {
     return null; // will use console fallback
   }
 
+  if (process.env.EMAIL_SERVICE === 'gmail') {
+    // Use explicit host/port instead of the 'service' shorthand.
+    // Render (and most cloud hosts) block port 587 (STARTTLS); port 465 (SSL) works.
+    return nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true, // SSL — required for port 465
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: emailPass
+      }
+    });
+  }
+
   if (process.env.EMAIL_SERVICE) {
     return nodemailer.createTransport({
-      service: process.env.EMAIL_SERVICE, // 'gmail', 'yahoo', etc.
+      service: process.env.EMAIL_SERVICE,
       auth: {
         user: process.env.EMAIL_USER,
         pass: emailPass
