@@ -4182,3 +4182,267 @@ input, select, textarea { font-family: inherit; }
   }
 }
 
+/* =============================================
+   AI NUTRITION CHAT — FLOATING WIDGET
+   ============================================= */
+
+/* Floating action button */
+.nc-fab {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent-orange);
+  color: #fff;
+  font-size: 24px;
+  border: none;
+  box-shadow: 0 4px 20px rgba(22,163,74,0.45);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.nc-fab:hover {
+  transform: translateY(-3px) scale(1.06);
+  box-shadow: 0 6px 28px rgba(22,163,74,0.55);
+}
+
+/* Mobile backdrop */
+.nc-widget-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+  z-index: 290;
+}
+
+/* Sliding panel */
+.nc-widget-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: 400px;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border);
+  box-shadow: -4px 0 32px rgba(0,0,0,0.12);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+  overflow: hidden;
+}
+.nc-widget-open { transform: translateX(0); }
+
+/* Panel header */
+.nc-widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.nc-widget-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+}
+.nc-widget-title strong { font-size: 15px; font-weight: 700; display: block; line-height: 1.2; }
+.nc-widget-subtitle { font-size: 11px; color: var(--text-muted); }
+.nc-widget-actions { display: flex; gap: 4px; }
+.nc-widget-action-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.nc-widget-action-btn:hover { color: var(--text-primary); background: var(--bg-card-hover); }
+
+/* Uploaded document bar */
+.nc-widget-doc-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(22,163,74,0.07);
+  border-bottom: 1px solid rgba(22,163,74,0.18);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.nc-widget-doc-name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nc-widget-doc-meta { color: var(--text-muted); white-space: nowrap; }
+.nc-widget-doc-remove {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 12px; cursor: pointer; padding: 2px 4px; border-radius: var(--radius-sm);
+}
+.nc-widget-doc-remove:hover { color: var(--accent-red); }
+
+/* Messages area */
+.nc-widget-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Empty / loading states */
+.nc-widget-loading { display: flex; align-items: center; justify-content: center; flex: 1; padding: 32px; }
+.nc-widget-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 24px 12px; gap: 10px; flex: 1; justify-content: center; }
+.nc-widget-empty-icon { font-size: 40px; }
+.nc-widget-empty p { font-size: 13px; color: var(--text-secondary); max-width: 300px; line-height: 1.5; }
+.nc-widget-suggestions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 6px; }
+
+/* Messages */
+.nc-message { display: flex; gap: 8px; align-items: flex-start; }
+.nc-message-user { flex-direction: row-reverse; }
+.nc-message-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--accent-orange); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; flex-shrink: 0;
+}
+.nc-message-assistant .nc-message-avatar { background: rgba(22,163,74,0.1); font-size: 16px; }
+.nc-message-body { display: flex; flex-direction: column; gap: 2px; max-width: 82%; }
+.nc-message-user .nc-message-body { align-items: flex-end; }
+.nc-message-bubble {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 9px 13px;
+  font-size: 13.5px; line-height: 1.6; color: var(--text-primary); word-break: break-word;
+}
+.nc-message-user .nc-message-bubble { background: var(--accent-orange); color: #fff; border-color: var(--accent-orange); }
+.nc-message-time { font-size: 10px; color: var(--text-muted); padding: 0 4px; }
+
+/* Thinking animation */
+.nc-thinking { display: flex; align-items: center; gap: 5px; padding: 11px 14px; min-width: 56px; flex-wrap: wrap; }
+.nc-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); animation: nc-bounce 1.2s infinite; }
+.nc-dot:nth-child(2) { animation-delay: 0.2s; }
+.nc-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes nc-bounce { 0%,60%,100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-5px); opacity: 1; } }
+.nc-thinking-label { font-size: 11px; color: var(--text-muted); margin-left: 4px; white-space: nowrap; }
+
+/* Markdown in AI bubbles */
+.nc-markdown { font-size: 13.5px; line-height: 1.65; }
+.nc-markdown h1,.nc-markdown h2 { font-size: 14px; font-weight: 700; margin: 10px 0 5px; }
+.nc-markdown h3,.nc-markdown h4 { font-size: 13.5px; font-weight: 700; margin: 8px 0 4px; }
+.nc-markdown p { margin: 5px 0; }
+.nc-markdown ul,.nc-markdown ol { padding-left: 16px; margin: 5px 0; }
+.nc-markdown li { margin: 2px 0; }
+.nc-markdown strong { font-weight: 700; }
+.nc-markdown code { background: rgba(0,0,0,0.07); padding: 1px 5px; border-radius: 4px; font-family: monospace; font-size: 12.5px; }
+.nc-markdown pre { background: rgba(0,0,0,0.05); padding: 9px 11px; border-radius: 8px; overflow-x: auto; margin: 7px 0; }
+.nc-markdown pre code { background: none; padding: 0; }
+.nc-markdown table { border-collapse: collapse; width: 100%; font-size: 12.5px; margin: 8px 0; }
+.nc-markdown th,.nc-markdown td { border: 1px solid var(--border); padding: 5px 9px; text-align: left; }
+.nc-markdown th { background: var(--bg-card-hover); font-weight: 700; }
+.nc-markdown blockquote { border-left: 3px solid var(--accent-orange); padding-left: 10px; color: var(--text-secondary); margin: 6px 0; }
+
+/* Suggestion chips */
+.nc-suggestion-chip {
+  background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 100px;
+  padding: 6px 12px; font-size: 12px; font-weight: 500; color: var(--text-primary);
+  cursor: pointer; transition: all var(--transition); text-align: left; line-height: 1.4;
+}
+.nc-suggestion-chip:hover:not(:disabled) { border-color: var(--accent-orange); color: var(--accent-orange); background: rgba(22,163,74,0.06); }
+.nc-suggestion-chip:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Input area */
+.nc-widget-input-wrap { border-top: 1px solid var(--border); flex-shrink: 0; padding: 10px 12px 8px; }
+
+/* Staged file chip — sits above the input bar before the user sends */
+.nc-pending-file {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(22,163,74,0.09);
+  border: 1px solid rgba(22,163,74,0.3);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin-bottom: 7px;
+  font-size: 12.5px;
+  color: var(--text-primary);
+}
+.nc-pending-file svg { flex-shrink: 0; color: var(--accent-orange); }
+.nc-pending-file-name { flex: 1; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nc-pending-file-remove {
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 12px; padding: 1px 4px;
+  border-radius: 4px; line-height: 1; transition: color var(--transition);
+}
+.nc-pending-file-remove:hover { color: var(--accent-red); }
+
+/* File badge inside a sent user message bubble */
+.nc-msg-file-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 5px;
+  padding: 3px 7px;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.nc-upload-error {
+  font-size: 12px; color: var(--accent-red); margin-bottom: 6px;
+  padding: 5px 8px; background: rgba(208,0,0,0.07);
+  border-radius: var(--radius-sm); border: 1px solid rgba(208,0,0,0.2);
+}
+.nc-widget-input-bar { display: flex; align-items: flex-end; gap: 6px; }
+
+/* Paperclip attach button */
+.nc-attach-btn {
+  background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius);
+  width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text-secondary); flex-shrink: 0; transition: all var(--transition);
+}
+.nc-attach-btn:hover:not(:disabled) { color: var(--accent-orange); border-color: var(--accent-orange); background: rgba(22,163,74,0.06); }
+.nc-attach-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.nc-attach-uploading { color: var(--accent-orange) !important; border-color: var(--accent-orange) !important; }
+.nc-attach-spinner {
+  width: 14px; height: 14px; border: 2px solid rgba(22,163,74,0.3);
+  border-top-color: var(--accent-orange); border-radius: 50%;
+  animation: nc-spin 0.7s linear infinite; display: inline-block;
+}
+@keyframes nc-spin { to { transform: rotate(360deg); } }
+
+/* Chat textarea */
+.nc-input {
+  flex: 1; background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 9px 12px; font-size: 13.5px;
+  color: var(--text-primary); resize: none; outline: none; line-height: 1.5;
+  max-height: 110px; overflow-y: auto; transition: border-color var(--transition); font-family: inherit;
+}
+.nc-input:focus { border-color: var(--accent-orange); }
+.nc-input::placeholder { color: var(--text-muted); }
+
+/* Send button */
+.nc-send-btn {
+  width: 38px; height: 38px; border-radius: var(--radius); padding: 0;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+
+.nc-footer-note { font-size: 10.5px; color: var(--text-muted); text-align: center; padding-top: 6px; line-height: 1.4; }
+
+/* Responsive */
+@media (max-width: 480px) {
+  .nc-widget-panel { width: 100vw; }
+  .nc-fab { bottom: 20px; right: 16px; width: 50px; height: 50px; font-size: 22px; }
+}
+

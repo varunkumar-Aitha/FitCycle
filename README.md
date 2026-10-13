@@ -4,6 +4,7 @@ A full-stack Single Page Application for tracking gym workouts, nutrition and wa
 
 ## Features
 
+- **AI Nutrition Chatbot** — RAG-powered chat with diet plan upload, personalised advice, Indian food support
 - **JWT Authentication** — Register, login, persistent sessions
 - **12-Week Workout Plan** — Structured 4-day rotation with week tracking
 - **Muscle Group Rotation** — Prevents accidental repeat of same muscle focus
@@ -87,7 +88,13 @@ JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
 JWT_EXPIRES_IN=7d
 CLIENT_URL=http://localhost:5173
 NODE_ENV=development
+
+# AI Nutrition Chatbot — get a free key at https://aistudio.google.com/app/apikey
+GEMINI_API_KEY=your_gemini_api_key_here
 ```
+
+> **Free tier limits (Gemini 1.5 Flash + text-embedding-004):** 1,500 requests/day, 15 requests/minute.
+> No credit card required.
 
 ### 3. Seed Exercise Database
 
@@ -177,6 +184,16 @@ Open http://localhost:5173 in your browser.
 | Method | Route | Access |
 |--------|-------|--------|
 | GET | /api/dashboard | Private |
+
+### AI Nutrition Chat
+
+| Method | Route | Access | Description |
+|--------|-------|--------|-------------|
+| POST | /api/nutrition-chat/upload | Private | Upload PDF/TXT diet plan (max 5 MB) |
+| POST | /api/nutrition-chat/message | Private | Send a question, receive AI response |
+| GET | /api/nutrition-chat/history | Private | Get chat history + current document info |
+| DELETE | /api/nutrition-chat/document | Private | Delete uploaded document and embeddings |
+| DELETE | /api/nutrition-chat/history | Private | Clear all chat messages |
 
 ## Authentication Flow
 

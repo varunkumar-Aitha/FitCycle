@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+
+const NutritionChatWidget = lazy(() => import('../pages/NutritionChat'))
 
 const NAV_ITEMS = [
   { path: '/game-map', label: 'Game Map', icon: '🗺️' },
@@ -96,6 +98,11 @@ const AppLayout = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Floating AI Nutrition widget — available on every page */}
+      <Suspense fallback={null}>
+        <NutritionChatWidget />
+      </Suspense>
     </div>
   )
 }

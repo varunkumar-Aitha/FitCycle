@@ -58,3 +58,21 @@ export const gamemapService = {
   getMap: () => api.get('/gamemap'),
   getProfile: () => api.get('/gamemap/profile')
 }
+
+export const nutritionChatService = {
+  getHistory: () => api.get('/nutrition-chat/history'),
+
+  sendMessage: (message) => api.post('/nutrition-chat/message', { message }),
+
+  uploadDocument: (file) => {
+    const form = new FormData()
+    form.append('document', file)
+    return api.post('/nutrition-chat/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+
+  deleteDocument: () => api.delete('/nutrition-chat/document'),
+
+  clearHistory: () => api.delete('/nutrition-chat/history')
+}

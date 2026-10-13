@@ -18,6 +18,7 @@ const foodCatalogRoutes = require('./routes/foodCatalog');
 const waterRoutes = require('./routes/water');
 const dashboardRoutes = require('./routes/dashboard');
 const gamemapRoutes = require('./routes/gamemap');
+const nutritionChatRoutes = require('./routes/nutritionChat');
 
 const path = require('path');
 const app = express();
@@ -79,6 +80,7 @@ app.use('/api/food-catalog', foodCatalogRoutes);
 app.use('/api/water', waterRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/gamemap', gamemapRoutes);
+app.use('/api/nutrition-chat', nutritionChatRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
